@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum TaskStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RunStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Task {
+  id             String     @id @default(uuid())
+  type           String
+  payload        Json
+  status         TaskStatus @default(PENDING)
+  idempotencyKey String?    @unique
+  result         Json?
+  scheduledAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  runs TaskRun[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([scheduledAt])
+}
+
+model TaskRun {
+  id            String    @id @default(uuid())
+  taskId        String
+  status        RunStatus
+  attemptNumber Int
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  errorMessage  String?
+
+  task Task @relation(fields: [taskId], references: [id])
+
+  @@index([taskId])
+  @@index([status])
+}
